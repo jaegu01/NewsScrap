@@ -168,8 +168,8 @@ def main():
     stock_names = df_kospi['Name'].tolist()
     stock_codes = df_kospi['Code'].tolist()
 
-    start_date = '2017-04-01'
-    end_date = '2017-4-30'
+    start_date = '2015-01-01'
+    end_date = '2015-12-31'
     start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
     end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
 

@@ -38,6 +38,8 @@ class NaverNewsScraper:
         return None
 
     def parse_article_content(self, article_url):
+        # 요청 간 랜덤한 대기 시간 추가
+        #time.sleep(random.uniform(1, 5))  # 1~5초 사이 랜덤 대기
         res = self.get(article_url)
         if res is None:
             return "Failed to retrieve content"
@@ -45,8 +47,8 @@ class NaverNewsScraper:
         content = soup.select_one('article#dic_area')
         if content:
             for tag in content(['script', 'style', 'div', 'span']):
-                tag.extract()
-            return content.get_text().strip()
+                tag.extract()  # 불필요한 태그 제거
+            return content.get_text().strip()  # 기사 내용 텍스트로 반환
         return "No content available"
 
     def parse_news(self, soup, date):
@@ -57,11 +59,12 @@ class NaverNewsScraper:
 
         current_titles = [article.find('a').get_text().strip() for article in articles if article.find('a')]
 
+        # 중복된 타이틀 확인
         if self.previous_titles == current_titles:
             print(f"[Process {self.process_id}] All titles on this page are the same as the previous page. Moving to the next date.")
             return False
 
-        self.previous_titles = current_titles
+        self.previous_titles = current_titles  # 현재 페이지 타이틀을 저장하여 다음과 비교
 
         parsed_any = False
         for article in articles:
@@ -90,6 +93,7 @@ class NaverNewsScraper:
                             '내용': content
                         })
                         parsed_any = True
+                        print(title)
                     except Exception as e:
                         print(f"Error parsing article content: {e}")
                         continue
@@ -119,10 +123,11 @@ class NaverNewsScraper:
                     print(f"[Process {self.process_id}] No more new articles or repeated articles detected. Moving to the next date.")
                     break
 
-                print(f"[Process {self.process_id}] {date_str}, {page_num}page.")
+                print(f"[Process {self.process_id}] {date_str}, {page_num} page.")
                 page_num += 1
 
-                time.sleep(5)
+                # 요청 사이 가변적인 딜레이 설정
+                time.sleep(random.uniform(5, 10))  # 5초에서 10초 사이 랜덤 대기
 
                 if time.time() - session_start_time > 1800:
                     print(f"[Process {self.process_id}] Restarting session due to long session duration.")
@@ -134,11 +139,11 @@ class NaverNewsScraper:
             self.previous_titles = None
 
             if current_date.day == 1 or current_date > self.end_date:
-                self.save_to_csv(f'data_news_all/news_{self.start_date.strftime("%Y-%m-%d")}_to_{(current_date - timedelta(days=1)).strftime("%Y-%m-%d")}_proc_{self.process_id}.csv')
+                self.save_to_csv(f'data_news_all/news_all_{self.start_date.strftime("%Y-%m-%d")}_to_{(current_date - timedelta(days=1)).strftime("%Y-%m-%d")}_proc_{self.process_id}.csv')
                 self.news_data = []
 
         if self.news_data:
-            self.save_to_csv(f'data_news_all/news_{self.start_date.strftime("%Y-%m-%d")}_to_{self.end_date.strftime("%Y-%m-%d")}_proc_{self.process_id}.csv')
+            self.save_to_csv(f'data_news_all/news_all_{self.start_date.strftime("%Y-%m-%d")}_to_{self.end_date.strftime("%Y-%m-%d")}_proc_{self.process_id}.csv')
 
     def save_to_csv(self, filepath):
         if self.news_data:
@@ -157,7 +162,7 @@ def run_scraper(start_date, end_date, process_id):
 
 def main():
     start_date = '2015-01-01'
-    end_date = '2017-12-31'
+    end_date = '2015-12-31'
     start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
     end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
 
@@ -172,7 +177,7 @@ def main():
         periods.append((current_start, current_end))
         current_start = current_end + timedelta(days=1)
 
-    max_processes = 6
+    max_processes = 4
     with multiprocessing.Pool(processes=max_processes) as pool:
         pool.starmap(run_scraper, [(start, end, i) for i, (start, end) in enumerate(periods)])
 
